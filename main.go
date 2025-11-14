@@ -16,6 +16,6 @@ func main() {
 	root := ui.BuildUI(fileName, content)
 
 	if err := root.EnableMouse(false).Run(); err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 }
