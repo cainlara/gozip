@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// TestMethodToString verifica que la conversión de códigos de método
-// a strings funcione correctamente para los métodos de compresión estándar
+// TestMethodToString verifies that the conversion of method codes
+// to strings works correctly for standard compression methods
 func TestMethodToString(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -55,8 +55,8 @@ func TestMethodToString(t *testing.T) {
 	}
 }
 
-// TestGetFileArgumentValue verifica el parsing de argumentos de línea de comandos
-// para validar que solo se acepten archivos .zip válidos
+// Test Get File Argument Value verifies the parsing of command-line arguments
+// to validate that only valid .zip files are accepted
 func TestGetFileArgumentValue(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -115,11 +115,9 @@ func TestGetFileArgumentValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Guardar los argumentos originales
 			oldArgs := os.Args
 			defer func() { os.Args = oldArgs }()
 
-			// Establecer los argumentos de prueba
 			os.Args = tt.args
 
 			got, err := getFileArgumentValue()
@@ -145,7 +143,7 @@ func TestGetFileArgumentValue(t *testing.T) {
 	}
 }
 
-// TestGetExecutionFolder verifica que se pueda obtener el directorio de ejecución
+// TestGetExecutionFolder checks that the execution directory can be obtained
 func TestGetExecutionFolder(t *testing.T) {
 	folder, err := getExecutionFolder()
 
@@ -157,7 +155,6 @@ func TestGetExecutionFolder(t *testing.T) {
 		t.Error("getExecutionFolder() returned empty string")
 	}
 
-	// Verificar que el directorio existe
 	info, err := os.Stat(folder)
 	if err != nil {
 		t.Errorf("getExecutionFolder() returned non-existent directory: %v", err)
@@ -168,7 +165,7 @@ func TestGetExecutionFolder(t *testing.T) {
 	}
 }
 
-// TestOpenZipFileErrors verifica el manejo de errores al abrir archivos ZIP
+// TestOpenZipFileErrors checks the error handling when opening ZIP files
 func TestOpenZipFileErrors(t *testing.T) {
 	t.Run("archivo no existente", func(t *testing.T) {
 		_, err := openZipFile("/path/to/nonexistent/file.zip")
@@ -178,7 +175,6 @@ func TestOpenZipFileErrors(t *testing.T) {
 	})
 
 	t.Run("archivo no es ZIP", func(t *testing.T) {
-		// Crear un archivo temporal que no sea ZIP
 		tmpFile, err := os.CreateTemp("", "notazip*.txt")
 		if err != nil {
 			t.Fatalf("Failed to create temp file: %v", err)
@@ -195,13 +191,11 @@ func TestOpenZipFileErrors(t *testing.T) {
 	})
 }
 
-// TestOpenZipFileSuccess verifica que se puedan leer archivos ZIP válidos
-// Nota: Este test requiere un archivo ZIP de prueba en testdata/
+// TestOpenZipFileSuccess checks that valid ZIP files can be read
+// Note: This test requires a test zip file in testdata/
 func TestOpenZipFileSuccess(t *testing.T) {
-	// Crear un archivo ZIP de prueba simple
 	testZipPath := "testdata/test.zip"
 
-	// Verificar si el archivo de prueba existe
 	if _, err := os.Stat(testZipPath); os.IsNotExist(err) {
 		t.Skip("Skipping test: testdata/test.zip not found. Create a test zip file to run this test.")
 	}
@@ -215,25 +209,21 @@ func TestOpenZipFileSuccess(t *testing.T) {
 		t.Error("openZipFile() returned nil content")
 	}
 
-	// Verificar que el contenido sea un slice válido
-	if len(content) < 0 {
-		t.Error("openZipFile() returned invalid content length")
+	if len(content) == 0 {
+		t.Error("openZipFile() returned empty content")
 	}
 }
 
-// TestGetFileToExtractIntegration es un test de integración que verifica
-// el flujo completo de obtención de archivo para extraer
-// Nota: Este test requiere configuración específica y puede ser skipped en CI
+// TestGetFileToExtractIntegration checks the integration flow of getting a file to extract
+// Note: This test requires specific configuration and can be skipped in CI
 func TestGetFileToExtractIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	// Guardar los argumentos originales
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
-	// Guardar el directorio actual
 	oldDir, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("Failed to get current directory: %v", err)
@@ -259,7 +249,7 @@ func TestGetFileToExtractIntegration(t *testing.T) {
 	})
 }
 
-// BenchmarkMethodToString mide el rendimiento de la conversión de métodos
+// BenchmarkMethodToString measures the performance of method code to string conversion
 func BenchmarkMethodToString(b *testing.B) {
 	methods := []uint16{0, 8, 14, 255}
 
@@ -270,7 +260,7 @@ func BenchmarkMethodToString(b *testing.B) {
 	}
 }
 
-// BenchmarkGetFileArgumentValue mide el rendimiento del parsing de argumentos
+// BenchmarkGetFileArgumentValue measures the performance of argument parsing
 func BenchmarkGetFileArgumentValue(b *testing.B) {
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
