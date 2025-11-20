@@ -119,6 +119,10 @@ func buildContentTable(fileName string, filterFooter *tview.Flex, filterInput *t
 	filterInput.SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEscape || key == tcell.KeyEnter {
 			filterMode = false
+			if key == tcell.KeyEscape {
+				filterInput.SetText("")
+				populateTable("")
+			}
 			layout.RemoveItem(filterFooter)
 			app.SetFocus(table)
 		}
