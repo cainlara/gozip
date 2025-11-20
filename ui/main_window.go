@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/cainlara/gozip/core"
 	"github.com/gdamore/tcell/v2"
@@ -14,31 +15,23 @@ func BuildUI(fileName string, content []core.ZippedFile) *tview.Application {
 
 	header := buildHeader()
 
-	footer := tview.NewTextView().
-		SetText("selected: {{name}}").
-		SetTextAlign(tview.AlignCenter).
-		SetDynamicColors(true)
+	filterInput := tview.NewInputField().
+		SetLabel("Filter: ").
+		SetFieldWidth(0).
+		SetFieldBackgroundColor(tcell.ColorBlack)
 
-	table := buildContentTable(fileName, footer, app, content)
+	footer := tview.NewFlex().
+		AddItem(filterInput, 0, 1, true)
 
-	// Layout: Header | Table (expand) | Footer
-	layout := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(header, 1, 0, false).
-		AddItem(table, 0, 1, true) //.
-		// AddItem(footer, 1, 0, false)
+	layout := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(header, 1, 0, false)
+
+	table := buildContentTable(fileName, footer, filterInput, layout, app, content)
+
+	layout.AddItem(table, 0, 1, true)
 
 	return app.SetRoot(layout, true)
-}
-
-func updateFooter(table *tview.Table, footer *tview.TextView, row int) {
-	if row == 0 {
-		table.Select(1, 0)
-		row = 1
-	}
-	userCell := table.GetCell(row, 2)
-	if userCell != nil {
-		footer.SetText(fmt.Sprintf("selected: %s", userCell.Text))
-	}
 }
 
 func buildHeader() *tview.TextView {
@@ -46,13 +39,13 @@ func buildHeader() *tview.TextView {
 		SetTextAlign(tview.AlignLeft).
 		SetDynamicColors(true)
 
-	header.SetText("[::b]goZip! [gray]• Up/Down select file • q exit[gray]")
+	header.SetText("[::b]goZip! [gray]• Up/Down select file • f filter • q exit[gray]")
 	header.SetBackgroundColor(tcell.ColorReset)
 
 	return header
 }
 
-func buildContentTable(fileName string, footer *tview.TextView, app *tview.Application, content []core.ZippedFile) *tview.Table {
+func buildContentTable(fileName string, filterFooter *tview.Flex, filterInput *tview.InputField, layout *tview.Flex, app *tview.Application, content []core.ZippedFile) *tview.Table {
 	table := tview.NewTable().
 		SetBorders(false).
 		SetFixed(1, 0).
@@ -63,7 +56,7 @@ func buildContentTable(fileName string, footer *tview.TextView, app *tview.Appli
 		SetTitle(fileName).
 		SetTitleAlign(tview.AlignCenter)
 
-	rows := make([][]string, 0, 10)
+	allRows := make([][]string, 0, len(content))
 
 	for _, zf := range content {
 		row := []string{
@@ -72,32 +65,68 @@ func buildContentTable(fileName string, footer *tview.TextView, app *tview.Appli
 			strconv.FormatUint(zf.GetSize(), 10),
 			zf.GetModifiedDate(),
 			strconv.FormatUint(uint64(zf.GetCrc()), 10)}
-		rows = append(rows, row)
+		allRows = append(allRows, row)
 	}
 
 	headers := []string{"NAME", "IS FOLDER", "SIZE", "MODIFIED ON", "CRC"}
 
-	for c, h := range headers {
-		cell := tview.NewTableCell(fmt.Sprintf("[::b]%s", h)).
-			SetSelectable(false).
-			SetAlign(tview.AlignCenter)
-		table.SetCell(0, c, cell)
-	}
+	populateTable := func(filterText string) {
+		table.Clear()
 
-	for r, row := range rows {
-		for c, val := range row {
-			table.SetCell(r+1, c, tview.NewTableCell(val))
+		for c, h := range headers {
+			cell := tview.NewTableCell(fmt.Sprintf("[::b]%s", h)).
+				SetSelectable(false).
+				SetAlign(tview.AlignCenter)
+			table.SetCell(0, c, cell)
+		}
+
+		rowIndex := 1
+		filterLower := strings.ToLower(filterText)
+		for _, row := range allRows {
+			matches := filterText == ""
+			if !matches {
+				for _, val := range row {
+					if strings.Contains(strings.ToLower(val), filterLower) {
+						matches = true
+						break
+					}
+				}
+			}
+
+			if matches {
+				for c, val := range row {
+					table.SetCell(rowIndex, c, tview.NewTableCell(val))
+				}
+				rowIndex++
+			}
+		}
+
+		if rowIndex > 1 {
+			table.Select(1, 0)
 		}
 	}
 
-	// Callback cuando cambia la selección
-	table.SetSelectionChangedFunc(func(row, column int) {
-		updateFooter(table, footer, row)
+	populateTable("")
+
+	table.Select(1, 0)
+
+	filterMode := false
+
+	filterInput.SetChangedFunc(func(text string) {
+		populateTable(text)
 	})
 
-	// Selección inicial en la primera fila de datos
-	table.Select(1, 0)
-	updateFooter(table, footer, 1)
+	filterInput.SetDoneFunc(func(key tcell.Key) {
+		if key == tcell.KeyEscape || key == tcell.KeyEnter {
+			filterMode = false
+			if key == tcell.KeyEscape {
+				filterInput.SetText("")
+				populateTable("")
+			}
+			layout.RemoveItem(filterFooter)
+			app.SetFocus(table)
+		}
+	})
 
 	table.SetInputCapture(func(ev *tcell.EventKey) *tcell.EventKey {
 		switch ev.Key() {
@@ -105,10 +134,22 @@ func buildContentTable(fileName string, footer *tview.TextView, app *tview.Appli
 			app.Stop()
 			return nil
 		}
-		if ev.Key() == tcell.KeyRune && (ev.Rune() == 'q' || ev.Rune() == 'Q') {
-			app.Stop()
-			return nil
+		if ev.Key() == tcell.KeyRune {
+			switch ev.Rune() {
+			case 'q', 'Q':
+				app.Stop()
+				return nil
+			case 'f', 'F':
+				if !filterMode {
+					filterMode = true
+					filterInput.SetText("")
+					layout.AddItem(filterFooter, 1, 0, true)
+					app.SetFocus(filterInput)
+					return nil
+				}
+			}
 		}
+
 		return ev
 	})
 
