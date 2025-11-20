@@ -12,12 +12,13 @@ type ZippedFile struct {
 
 func NewZippedFile(fileName string, dir bool, size uint64, compressed uint64, method string, modified string, crc uint32) ZippedFile {
 	return ZippedFile{
-		fileName: fileName,
-		dir:      dir,
-		size:     size,
-		method:   method,
-		modified: modified,
-		crc:      crc,
+		fileName:   fileName,
+		dir:        dir,
+		size:       size,
+		compressed: compressed,
+		method:     method,
+		modified:   modified,
+		crc:        crc,
 	}
 }
 
