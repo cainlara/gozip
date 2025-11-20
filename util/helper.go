@@ -1,3 +1,6 @@
+// Package util provides utility functions for working with ZIP files.
+// It includes functionality for parsing command-line arguments,
+// opening ZIP files, and extracting their contents.
 package util
 
 import (
@@ -12,6 +15,24 @@ import (
 	"github.com/cainlara/gozip/core"
 )
 
+// GetFileToExtract retrieves the ZIP file specified in command-line arguments
+// and extracts its contents.
+//
+// This function performs the following operations:
+//  1. Obtains the current execution directory
+//  2. Parses command-line arguments to get the ZIP file name
+//  3. Constructs the full path to the ZIP file
+//  4. Opens and reads the contents of the ZIP file
+//
+// Returns:
+//   - string: name of the ZIP file
+//   - []core.ZippedFile: slice containing all files within the ZIP
+//   - error: any error encountered during the process
+//
+// Possible errors:
+//   - Error obtaining the execution directory
+//   - Error parsing arguments (no arguments, too many arguments, invalid extension)
+//   - Error opening the ZIP file (file doesn't exist, not a valid ZIP)
 func GetFileToExtract() (string, []core.ZippedFile, error) {
 	execFolder, err := getExecutionFolder()
 	if err != nil {

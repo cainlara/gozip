@@ -1,3 +1,6 @@
+// Package ui provides the terminal-based user interface for goZip.
+// It uses the tview library to create an interactive interface that allows
+// users to view and filter the contents of ZIP files.
 package ui
 
 import (
@@ -10,6 +13,26 @@ import (
 	"github.com/rivo/tview"
 )
 
+// BuildUI constructs and configures the complete user interface for viewing ZIP files.
+//
+// The interface includes:
+//   - A header with the title and keyboard shortcuts
+//   - An interactive table displaying the ZIP file contents
+//   - Filtering functionality activated with the 'f' key
+//   - Navigation with arrow keys
+//   - Exit with 'q' or Ctrl+C
+//
+// Parameters:
+//   - fileName: name of the ZIP file to display in the title
+//   - content: slice of ZippedFile with the ZIP file contents
+//
+// Returns:
+//   - *tview.Application: configured tview application ready to run
+//
+// Usage:
+//
+//	app := BuildUI("archive.zip", contents)
+//	app.Run()
 func BuildUI(fileName string, content []core.ZippedFile) *tview.Application {
 	app := tview.NewApplication()
 
