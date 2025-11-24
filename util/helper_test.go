@@ -14,32 +14,32 @@ func TestMethodToString(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "método STORE (sin compresión)",
+			name:     "STORE method (no compression)",
 			method:   0,
 			expected: "STORE",
 		},
 		{
-			name:     "método DEFLATE (compresión estándar)",
+			name:     "DEFLATE method (standard compression)",
 			method:   8,
 			expected: "DEFLATE",
 		},
 		{
-			name:     "método desconocido 1",
+			name:     "unknown method 1",
 			method:   1,
 			expected: "0x1",
 		},
 		{
-			name:     "método desconocido 12",
+			name:     "unknown method 12",
 			method:   12,
 			expected: "0xC",
 		},
 		{
-			name:     "método desconocido 255",
+			name:     "unknown method 255",
 			method:   255,
 			expected: "0xFF",
 		},
 		{
-			name:     "método BZIP2 (14)",
+			name:     "BZIP2 method (14)",
 			method:   14,
 			expected: "0xE",
 		},
@@ -66,47 +66,47 @@ func TestGetFileArgumentValue(t *testing.T) {
 		errorMsg  string
 	}{
 		{
-			name:      "archivo zip válido",
+			name:      "zip valid file",
 			args:      []string{"program", "test.zip"},
 			wantFile:  "test.zip",
 			wantError: false,
 		},
 		{
-			name:      "archivo zip con ruta",
+			name:      "zip file with path",
 			args:      []string{"program", "folder/test.zip"},
 			wantFile:  "folder/test.zip",
 			wantError: false,
 		},
 		{
-			name:      "sin argumentos",
+			name:      "no zip file provided",
 			args:      []string{"program"},
 			wantFile:  "",
 			wantError: true,
 			errorMsg:  "no zip file provided",
 		},
 		{
-			name:      "demasiados argumentos",
+			name:      "too many arguments",
 			args:      []string{"program", "file1.zip", "file2.zip"},
 			wantFile:  "",
 			wantError: true,
 			errorMsg:  "i don't know what to do with so many arguments",
 		},
 		{
-			name:      "extensión incorrecta",
+			name:      "invalid zip file name",
 			args:      []string{"program", "test.txt"},
 			wantFile:  "",
 			wantError: true,
 			errorMsg:  "invalid zip file name",
 		},
 		{
-			name:      "nombre vacío",
+			name:      "empty zip file name",
 			args:      []string{"program", ""},
 			wantFile:  "",
 			wantError: true,
 			errorMsg:  "invalid zip file name",
 		},
 		{
-			name:      "solo extensión .zip",
+			name:      "only .zip extension",
 			args:      []string{"program", ".zip"},
 			wantFile:  ".zip",
 			wantError: false,
@@ -233,7 +233,7 @@ func TestGetFileToExtractIntegration(t *testing.T) {
 	t.Run("archivo no encontrado en directorio actual", func(t *testing.T) {
 		os.Args = []string{"program", "nonexistent.zip"}
 
-		_, _, err := GetFileToExtract()
+		_, _, _, err := GetFileToExtract()
 		if err == nil {
 			t.Error("GetFileToExtract() expected error for non-existent file, got nil")
 		}
@@ -242,7 +242,7 @@ func TestGetFileToExtractIntegration(t *testing.T) {
 	t.Run("argumentos inválidos", func(t *testing.T) {
 		os.Args = []string{"program"}
 
-		_, _, err := GetFileToExtract()
+		_, _, _, err := GetFileToExtract()
 		if err == nil {
 			t.Error("GetFileToExtract() expected error for missing arguments, got nil")
 		}

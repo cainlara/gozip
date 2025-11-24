@@ -8,12 +8,12 @@ import (
 )
 
 func main() {
-	fileName, content, err := util.GetFileToExtract()
+	fileName, zipPath, content, err := util.GetFileToExtract()
 	if err != nil {
 		log.Panic(err)
 	}
 
-	root := ui.BuildUI(fileName, content)
+	root := ui.BuildUI(fileName, zipPath, content)
 
 	if err := root.EnableMouse(false).Run(); err != nil {
 		log.Panic(err)
