@@ -5,10 +5,12 @@ package ui
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/cainlara/gozip/core"
+	"github.com/cainlara/gozip/util"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -19,11 +21,13 @@ import (
 //   - A header with the title and keyboard shortcuts
 //   - An interactive table displaying the ZIP file contents
 //   - Filtering functionality activated with the 'f' key
+//   - File extraction with the Enter key
 //   - Navigation with arrow keys
 //   - Exit with 'q' or Ctrl+C
 //
 // Parameters:
 //   - fileName: name of the ZIP file to display in the title
+//   - zipPath: full path to the ZIP file for extraction
 //   - content: slice of ZippedFile with the ZIP file contents
 //
 // Returns:
@@ -31,9 +35,9 @@ import (
 //
 // Usage:
 //
-//	app := BuildUI("archive.zip", contents)
+//	app := BuildUI("archive.zip", "/path/to/archive.zip", contents)
 //	app.Run()
-func BuildUI(fileName string, content []core.ZippedFile) *tview.Application {
+func BuildUI(fileName string, zipPath string, content []core.ZippedFile) *tview.Application {
 	app := tview.NewApplication()
 
 	header := buildHeader()
@@ -50,7 +54,7 @@ func BuildUI(fileName string, content []core.ZippedFile) *tview.Application {
 		SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false)
 
-	table := buildContentTable(fileName, footer, filterInput, layout, app, content)
+	table := buildContentTable(fileName, zipPath, footer, filterInput, layout, app, content)
 
 	layout.AddItem(table, 0, 1, true)
 
@@ -62,13 +66,13 @@ func buildHeader() *tview.TextView {
 		SetTextAlign(tview.AlignLeft).
 		SetDynamicColors(true)
 
-	header.SetText("[::b]goZip! [gray]• Up/Down select file • f filter • q exit[gray]")
+	header.SetText("[::b]goZip! [gray]• Up/Down select • Enter extract • f filter • q exit[gray]")
 	header.SetBackgroundColor(tcell.ColorReset)
 
 	return header
 }
 
-func buildContentTable(fileName string, filterFooter *tview.Flex, filterInput *tview.InputField, layout *tview.Flex, app *tview.Application, content []core.ZippedFile) *tview.Table {
+func buildContentTable(fileName string, zipPath string, filterFooter *tview.Flex, filterInput *tview.InputField, layout *tview.Flex, app *tview.Application, content []core.ZippedFile) *tview.Table {
 	table := tview.NewTable().
 		SetBorders(false).
 		SetFixed(1, 0).
@@ -135,6 +139,9 @@ func buildContentTable(fileName string, filterFooter *tview.Flex, filterInput *t
 
 	filterMode := false
 
+	var lastExtractedRow int = -1
+	var extractionMessage string = ""
+
 	filterInput.SetChangedFunc(func(text string) {
 		populateTable(text)
 	})
@@ -151,10 +158,39 @@ func buildContentTable(fileName string, filterFooter *tview.Flex, filterInput *t
 		}
 	})
 
+	table.SetSelectionChangedFunc(func(row, column int) {
+		if lastExtractedRow != -1 && row != lastExtractedRow {
+			table.SetTitle(fileName)
+			lastExtractedRow = -1
+			extractionMessage = ""
+		}
+	})
+
 	table.SetInputCapture(func(ev *tcell.EventKey) *tcell.EventKey {
 		switch ev.Key() {
 		case tcell.KeyCtrlC:
 			app.Stop()
+			return nil
+		case tcell.KeyEnter:
+			row, _ := table.GetSelection()
+			if row < 1 {
+				return nil
+			}
+
+			fileNameCell := table.GetCell(row, 0)
+			isDirCell := table.GetCell(row, 1)
+			if fileNameCell == nil || isDirCell == nil {
+				return nil
+			}
+
+			targetName := fileNameCell.Text
+			isDir := isDirCell.Text == "true"
+
+			if isDir {
+				showConfirmationModal(app, layout, table, zipPath, targetName, &lastExtractedRow, &extractionMessage)
+			} else {
+				extractItem(table, zipPath, targetName, false, row, &lastExtractedRow, &extractionMessage)
+			}
 			return nil
 		}
 		if ev.Key() == tcell.KeyRune {
@@ -177,4 +213,46 @@ func buildContentTable(fileName string, filterFooter *tview.Flex, filterInput *t
 	})
 
 	return table
+}
+
+// showConfirmationModal displays a modal dialog asking for confirmation before extracting a folder.
+func showConfirmationModal(app *tview.Application, layout *tview.Flex, table *tview.Table, zipPath, folderName string, lastExtractedRow *int, extractionMessage *string) {
+	modal := tview.NewModal().
+		SetText(fmt.Sprintf("Extract folder '%s' and all its contents?\n\nThis will extract all files within this folder recursively.", folderName)).
+		AddButtons([]string{"Yes", "No"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			if buttonLabel == "Yes" {
+				row, _ := table.GetSelection()
+				extractItem(table, zipPath, folderName, true, row, lastExtractedRow, extractionMessage)
+			}
+			app.SetRoot(layout, true)
+			app.SetFocus(table)
+		})
+
+	app.SetRoot(modal, true)
+}
+
+// extractItem performs the actual extraction and updates the table title with status.
+func extractItem(table *tview.Table, zipPath, targetName string, isFolder bool, row int, lastExtractedRow *int, extractionMessage *string) {
+	destDir, err := os.Getwd()
+	if err != nil {
+		table.SetTitle(fmt.Sprintf("[red]Error: %s[-]", err.Error()))
+		return
+	}
+
+	count, err := util.ExtractFile(zipPath, targetName, destDir)
+	if err != nil {
+		table.SetTitle(fmt.Sprintf("[red]Error: %s[-]", err.Error()))
+		*lastExtractedRow = -1
+		*extractionMessage = ""
+	} else {
+		*lastExtractedRow = row
+
+		if isFolder {
+			*extractionMessage = fmt.Sprintf("[green]Extracted folder: %d files[-]", count)
+		} else {
+			*extractionMessage = fmt.Sprintf("[green]Extracted: %s[-]", targetName)
+		}
+		table.SetTitle(*extractionMessage)
+	}
 }
